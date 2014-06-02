@@ -52,6 +52,109 @@
 
 #include "systeminfo.hpp"
 
+int sysconf_trait (const Trait trait)
+{
+
+}
+
+int getrlimit_trait (const Trait trait)
+{
+   	struct rlimit rlim;
+   	int val = 0;
+   	
+   	switch (trait) {
+   		case (VirtualMemory): 
+   			val = getrlimit(RLIMIT_AS, &rlim);
+   			break;
+   		case (CoreFile): 
+   		   	val = getrlimit(RLIMIT_CORE, &rlim);
+   			break;
+   		case (CPUTime):
+   			val = getrlimit(RLIMIT_CPU, &rlim);
+   			break;
+		case (DataSegment):
+   			val = getrlimit(RLIMIT_DATA, &rlim);
+   			break;		 
+		case (MaxFileSize): 
+   			val = getrlimit(RLIMIT_FSIZE, &rlim);
+   			break;		
+		case (LockLimit): 
+   			val = getrlimit(RLIMIT_LOCKS, &rlim);
+   			break;		
+		case (MaxMemLock): 
+   			val = getrlimit(RLIMIT_MEMLOCK, &rlim);
+   			break;		
+		case (MsgQueueLimit):
+   			val = getrlimit(RLIMIT_MSGQUEUE, &rlim);
+   			break;		
+		case (MaxNice):
+   			val = getrlimit(RLIMIT_NICE, &rlim);
+   			break;		
+		case (MaxFD):
+   			val = getrlimit(RLIMIT_NOFILE, &rlim);
+   			break;		
+		case (MaxNumProcesses):
+   			val = getrlimit(RLIMIT_NPROC, &rlim);
+   			break;		
+		case (MaxRAMPages):
+   			val = getrlimit(RLIMIT_RSS, &rlim);
+   			break;		
+		case (MaxPriority):
+   			val = getrlimit(RLIMIT_RTPRIO, &rlim);
+   			break;		
+		case (MaxRTime):
+#ifdef RLIMIT_RTTIME
+   			val = getrlimit(RLIMIT_RTTIME, &rlim);
+#endif   			
+   			break;		
+		case (MaxSignalQueue):
+   			val = getrlimit(RLIMIT_SIGPENDING, &rlim);
+   			break;		
+		case (MaxStackSize):
+   			val = getrlimit(RLIMIT_STACK, &rlim);
+   			break;		
+   	}
+
+   	if (val < 0)
+   		perror("getrlimit");
+   	
+   	return rlim.rlim_max;
+}
+
+int parse_named_value (const char *path, const char *name, char *buf)
+{
+	FILE *fp = NULL;
+      	char key[128], val[128];
+      	int count = EOF;
+      	
+	errno = 0;
+	
+	if ((fp = fopen(path, "r")) == NULL)
+		return -1;
+		
+	memset(key, 0, sizeof(key));
+	memset(val, 0, sizeof(val));
+
+	while ((count = fscanf(fp, "%[^:]:%[^\n]\n", key, val)) != EOF) {
+		if (count == 2) {
+			if (!strcmp(key, name)) {
+				fclose(fp);
+				fp = NULL;
+				
+				memcpy(buf, val, strlen(val));
+				return 0;
+			}
+		}
+	}
+
+	if (fp) {
+		fclose(fp);
+		fp = NULL;
+	}
+	
+	return -1;
+}
+
 std::string
 SystemInfo::getSystemProperty( const Trait trait )
 {
@@ -416,6 +519,30 @@ SystemInfo::getSystemProperty( const Trait trait )
       }
       return( std::to_string( priority ) );
    }
+
+   else if (trait >= VirtualMemory && trait <= MaxStackSize) {
+   	return std::to_string(getrlimit_trait(trait));
+   }
+   
+   else if (trait >= MemTotal && trait <= MemFree) {
+	char buf[100];
+	memset(buf, 0, sizeof(buf));
+	
+	switch (trait){
+		case MemTotal:
+			if (parse_named_value("/proc/meminfo", "MemTotal", buf) < 0)
+				perror("parsing");
+			break;
+		case MemFree:
+			if (parse_named_value("/proc/meminfo", "MemFree", buf) < 0)
+				perror("parsing");
+			break;
+	}		
+		
+	std::string tmp(buf);
+   	return tmp;
+   }
+   
 #elif __APPLE__
    typedef int mib_t;
    mib_t mib[4];
@@ -871,7 +998,25 @@ SystemInfo::getName( const Trait trait )
       "FreeHighMemory",
       "MemoryUnit",
       "Scheduler",
-      "Priority"
+   "Priority",
+   "VirtualMemory",
+   "CoreFile",
+   "CPUTime",
+   "DataSegment",
+   "MaxFileSize",
+   "LockLimit",
+   "MaxMemLock",
+   "MsgQueueLimit",
+   "MaxNice",
+   "MaxFD",
+   "MaxNumProcesses",
+   "MaxRAMPages",
+   "MaxPriority",
+   "MaxRTime",
+   "MaxSignalQueue",
+   "MaxStackSize",
+   "MemTotal",
+   "MemFree"
    };
    return( traitStrings[ trait ] );
 }
