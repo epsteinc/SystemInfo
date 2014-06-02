@@ -2,7 +2,7 @@ CPPFILES = main systeminfo
 FILES = $(addsuffix .cpp, $(CPPFILES) )
 OBJS  = $(addsuffix .o, $(CPPFILES) )
 
-CXX 		= clang++
+CXX 		= g++
 CXXFLAGS = -std=c++11 -O2 --static
 
 compile: $(FILES)
