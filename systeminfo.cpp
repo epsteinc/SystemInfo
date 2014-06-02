@@ -526,15 +526,16 @@ SystemInfo::getSystemProperty( const Trait trait )
    
    else if (trait >= MemTotal && trait <= MemFree) {
 	char buf[100];
+	const char *path = "/proc/meminfo";
 	memset(buf, 0, sizeof(buf));
 	
 	switch (trait){
 		case MemTotal:
-			if (parse_named_value("/proc/meminfo", "MemTotal", buf) < 0)
+			if (parse_named_value(path, "MemTotal", buf) < 0)
 				perror("parsing");
 			break;
 		case MemFree:
-			if (parse_named_value("/proc/meminfo", "MemFree", buf) < 0)
+			if (parse_named_value(path, "MemFree", buf) < 0)
 				perror("parsing");
 			break;
 	}		
