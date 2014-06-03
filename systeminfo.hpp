@@ -75,6 +75,7 @@ enum Trait {
    MemoryUnit,
    Scheduler,
    Priority,
+#ifdef __linux
    VirtualMemory,
    CoreFile,
    CPUTime,
@@ -91,16 +92,61 @@ enum Trait {
    MaxRTime,
    MaxSignalQueue,
    MaxStackSize,
-   MemTotal,
-   MemFree,
+MemTotal,
+MemFree,
+Buffers,
+Cached,
+SwapCached,
+Active,
+Inactive,
+Activeanon,
+Inactiveanon,
+Activefile,
+Inactivefile,
+SwapTotal,
+SwapFree,
+Dirty,
+Writeback,
+AnonPages,
+Mapped,
+Shmem,
+Slab,
+SReclaimable,
+SUnreclaim,
+KernelStack,
+PageTables,
+CommitLimit,
+Committed_AS,
+VMallocTotal,
+VMallocUsed,
+VMallocChunk,
+HardwareCorrupted,
+AnonHugePages,
+HugePages_Total,
+HugePages_Free,
+Hugepagesize,
+	Name,
+	State,
+	Tgid,
+	Pid,
+	PPid,
+#endif
    N
 };
+
+int getrlimit_trait (const Trait trait);
+std::string schedule_str (const int schedule);
+int cache_handle (const Trait trait);
+int parse_named_value (const char *path, const char *name, char *buf);
+std::string cstr_to_string (const char *cstr);
 
 class SystemInfo
 {
 public:
    SystemInfo()            = delete;
    virtual ~SystemInfo()   = delete;
+
+   static std::string sysinfo_to_string (const Trait trait, struct sysinfo info);
 
    /**
     * getSystemProperty - call with a trait from the enum defined
@@ -117,7 +163,106 @@ public:
     * @param   trait - const Trait
     * @return  std::string - name of system trait
     */
-   static std::string   getName( const Trait trait );
+   static const char *getName (const Trait trait)
+{
+ 	static const char *traitStrings[Trait::N] = {
+		"LevelOneICacheSize",
+		"LevelOneICacheAssociativity",
+		"LevelOneICacheLineSize",
+		"LevelOneDCacheSize",
+		"LevelOneDCacheAssociativity",
+		"LevelOneDCacheLineSize",
+		"LevelTwoCacheSize",
+		"LevelTwoCacheAssociativity",
+		"LevelTwoCacheLineSize",
+		"LevelThreeCacheSize",
+		"LevelThreeCacheAssociativity",
+		"LevelThreeCacheLineSize",
+		"LevelFourCacheSize",
+		"LevelFourCacheAssociativity",
+		"LevelFourCacheLineSize",
+		"NumberOfProcessors",
+		"ProcessorName",
+		"ProcessorFrequency",
+		"SystemName",
+		"NodeName",
+		"OSRelease",
+		"OSVersion",
+		"MachineName",
+		"UpTime",
+		"OneMinLoad",
+		"FiveMinLoad",
+		"FifteenMinLoad",
+		"TotalMainMemory",
+		"FreeRam",
+		"SharedRam",
+		"BufferRam",
+		"TotalSwap",
+		"FreeSwap",
+		"NumberOfProcessesRunning",
+		"TotalHighMemory",
+		"FreeHighMemory",
+		"MemoryUnit",
+		"Scheduler",
+		"Priority",
+		"VirtualMemory",
+		"CoreFile",
+		"CPUTime",
+		"DataSegment",
+		"MaxFileSize",
+		"LockLimit",
+		"MaxMemLock",
+		"MsgQueueLimit",
+		"MaxNice",
+		"MaxFD",
+		"MaxNumProcesses",
+		"MaxRAMPages",
+		"MaxPriority",
+		"MaxRTime",
+		"MaxSignalQueue",
+		"MaxStackSize",
+		"MemTotal",
+		"MemFree",
+		"Buffers",
+		"Cached",
+		"SwapCached",
+		"Active",
+		"Inactive",
+		"Active(anon)",
+		"Inactive(anon)",
+		"Active(file)",
+		"Inactive(file)",
+		"SwapTotal",
+		"SwapFree",
+		"Dirty",
+		"Writeback",
+		"AnonPages",
+		"Mapped",
+		"Shmem",
+		"Slab",
+		"SReclaimable",
+		"SUnreclaim",
+		"KernelStack",
+		"PageTables",
+		"CommitLimit",
+		"Committed_AS",
+		"VMallocTotal",
+		"VMallocUsed",
+		"VMallocChunk",
+		"HardwareCorrupted",
+		"AnonHugePages",
+		"HugePages_Total",
+		"HugePages_Free",
+		"Hugepagesize",
+		"Name",
+		"State",
+		"Tgid",
+		"Pid",
+		"PPid"};
+
+	return traitStrings[trait];
+}
+
    /**
     * getNumTraits - returns the total number of defined traits, which
     * is the value Trait::N defined above.

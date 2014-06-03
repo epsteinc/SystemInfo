@@ -52,11 +52,6 @@
 
 #include "systeminfo.hpp"
 
-int sysconf_trait (const Trait trait)
-{
-
-}
-
 int getrlimit_trait (const Trait trait)
 {
    	struct rlimit rlim;
@@ -121,6 +116,94 @@ int getrlimit_trait (const Trait trait)
    	return rlim.rlim_max;
 }
 
+std::string schedule_str (const int schedule)
+{
+	switch (schedule) {
+		case SCHED_OTHER:
+			return "SCHED_OTHER";
+		case SCHED_BATCH:
+			return "SCHED_BATCH";
+		case SCHED_IDLE:
+			return "SCHED_IDLE";
+		case SCHED_FIFO:
+			return "SCHED_FIFO";
+		case SCHED_RR:
+			return "SCHED_RR";
+	}
+}
+
+int cache_handle (const Trait trait)
+{
+	switch (trait) {
+		case LevelOneICacheSize:
+			return _SC_LEVEL1_ICACHE_SIZE;
+		case LevelOneICacheAssociativity:
+			return _SC_LEVEL1_ICACHE_ASSOC;
+		case LevelOneICacheLineSize:
+			return _SC_LEVEL1_ICACHE_LINESIZE;
+		case LevelOneDCacheSize:
+			return _SC_LEVEL1_DCACHE_SIZE;
+		case LevelOneDCacheAssociativity:
+			return _SC_LEVEL1_DCACHE_ASSOC;
+		case LevelOneDCacheLineSize:
+			return _SC_LEVEL1_DCACHE_LINESIZE;
+		case LevelTwoCacheSize:
+			return _SC_LEVEL2_CACHE_SIZE;
+		case LevelTwoCacheAssociativity:
+			return _SC_LEVEL2_CACHE_ASSOC;
+		case LevelTwoCacheLineSize:
+			return _SC_LEVEL2_CACHE_LINESIZE;
+		case LevelThreeCacheSize:
+			return _SC_LEVEL3_CACHE_SIZE;
+		case LevelThreeCacheAssociativity:
+			return _SC_LEVEL3_CACHE_ASSOC;
+		case LevelThreeCacheLineSize:
+			return _SC_LEVEL3_CACHE_LINESIZE;
+		case LevelFourCacheSize:
+			return _SC_LEVEL4_CACHE_SIZE;
+		case LevelFourCacheAssociativity:
+			return _SC_LEVEL4_CACHE_ASSOC;
+		case LevelFourCacheLineSize:
+			return _SC_LEVEL4_CACHE_LINESIZE;
+	}
+	
+	return 0;
+}
+
+std::string SystemInfo::sysinfo_to_string (const Trait trait, struct sysinfo info)
+{
+	switch (trait) {
+		case UpTime:
+			return std::to_string(info.uptime);   
+		case OneMinLoad:
+			return std::to_string(info.loads[0]);
+		case FiveMinLoad:
+			return std::to_string(info.loads[1]);
+		case FifteenMinLoad:
+			return std::to_string(info.loads[2]);
+		case TotalMainMemory:
+			return std::to_string(info.totalram);
+		case FreeRam:
+			return std::to_string(info.freeram);
+		case SharedRam:
+			return std::to_string(info.sharedram);
+		case BufferRam:
+			return std::to_string(info.bufferram);
+		case TotalSwap:
+			return std::to_string(info.totalswap);
+		case FreeSwap:
+			return std::to_string(info.freeswap);
+		case NumberOfProcessesRunning:
+			return std::to_string(info.procs);
+		case TotalHighMemory:
+			return std::to_string(info.totalhigh);
+		case FreeHighMemory:
+			return std::to_string(info.freehigh);
+		case MemoryUnit:
+			return std::to_string(info.mem_unit);
+	}
+}
+
 int parse_named_value (const char *path, const char *name, char *buf)
 {
 	FILE *fp = NULL;
@@ -137,11 +220,11 @@ int parse_named_value (const char *path, const char *name, char *buf)
 
 	while ((count = fscanf(fp, "%[^:]:%[^\n]\n", key, val)) != EOF) {
 		if (count == 2) {
-			if (!strcmp(key, name)) {
+			if (!strncmp(key, name, strlen(name))) {
 				fclose(fp);
 				fp = NULL;
 				
-				memcpy(buf, val, strlen(val));
+				strcpy(buf, val);
 				return 0;
 			}
 		}
@@ -155,394 +238,113 @@ int parse_named_value (const char *path, const char *name, char *buf)
 	return -1;
 }
 
+std::string cstr_to_string (const char *cstr)
+{
+	std::string tmp(cstr);
+	return tmp;
+}
+
 std::string
-SystemInfo::getSystemProperty( const Trait trait )
+SystemInfo::getSystemProperty (const Trait trait)
 {
 #if __linux
-   if( trait < 15 )
-   {
-      errno = 0;
-      long val( 0 );
-      switch( trait )
-      {
-         case( LevelOneICacheSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL1_ICACHE_SIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelOneICacheAssociativity ):
-         {
-            if( (val = sysconf( _SC_LEVEL1_ICACHE_ASSOC ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelOneICacheLineSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL1_ICACHE_LINESIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelOneDCacheSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL1_DCACHE_SIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelOneDCacheAssociativity ):
-         {
-            if( (val = sysconf( _SC_LEVEL1_DCACHE_ASSOC ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelOneDCacheLineSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL1_DCACHE_LINESIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelTwoCacheSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL2_CACHE_SIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelTwoCacheAssociativity ):
-         {
-            if( (val = sysconf( _SC_LEVEL2_CACHE_ASSOC ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelTwoCacheLineSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL2_CACHE_LINESIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelThreeCacheSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL3_CACHE_SIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelThreeCacheAssociativity ):
-         {
-            if( (val = sysconf( _SC_LEVEL3_CACHE_ASSOC ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelThreeCacheLineSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL3_CACHE_LINESIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelFourCacheSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL4_CACHE_SIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelFourCacheAssociativity ):
-         {
-            if( (val = sysconf( _SC_LEVEL4_CACHE_ASSOC ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         case( LevelFourCacheLineSize ):
-         {
-            if( (val = sysconf( _SC_LEVEL4_CACHE_LINESIZE ) ) == -1 )
-            {
-               perror( "Failed to get config info" );
-               val = -1;
-            }
-         }
-         break;
-         default:
-            break;
-      }
-      return( std::to_string( val ) );
-   }
-   else if( trait == NumberOfProcessors ) 
-   {
-      return( std::to_string( get_nprocs() ) ); 
-   }
-   else if( ProcessorName <= trait && trait <= ProcessorFrequency )
-   {
-      /**
-       * A bit ugly since we're processing /proc/cpuinfo
-       */
-      const std::string name( "model name" );
-      const std::string freq( "cpu MHz" );
-      FILE *fp( nullptr );
-      errno = 0;
-      fp = fopen( "/proc/cpuinfo", "r" );
-      if( fp == nullptr )
-      {
-         perror( "Failed to open /proc/cpuinfo" );
-         exit( EXIT_FAILURE );
-      }
-      const size_t buff_size( 100 );
-      char  key[ buff_size ];
-      char  value[ buff_size ];
-      std::memset( &key, '\0', sizeof( char ) * buff_size );
-      std::memset( &value, '\0', sizeof( char ) * buff_size );
-      switch( trait )
-      {
-         case( ProcessorName ):
-         {
-            int count = EOF;
-            while( (count = fscanf( fp, "%[^:]:%[^\n]\n", key, value ) ) != EOF )
-            {
-               if( count == 2 )
-               {
-                  if( strncmp( key, name.c_str() , name.length() - 1 ) == 0 )
-                  {
-                     fclose( fp );
-                     fp = nullptr;
-                     return( std::string( value ) ); 
-                  }
-               }
-            }
-         }
-         break;
-         case( ProcessorFrequency ):
-         {
-            int count = EOF;
-            while( (count = fscanf( fp, "%[^:]:%[^\n]\n", key, value ) ) != EOF )
-            {
-               if( count == 2 )
-               {
-                  if( strncmp( key, freq.c_str() , freq.length() - 1 ) == 0 )
-                  {
-                     fclose( fp );
-                     fp = nullptr;
-                     errno = 0;
-                     uint64_t frequency( strtof( value, (char**)NULL) * 1e6f );
-                     if( errno != 0 )
-                     {
-                        perror( "Failed to convert frequency from /proc/cpuinfo" );
-                        exit( EXIT_FAILURE );
-                     }
-                     return( std::to_string( frequency ) );
-                  }
-               }
-            }
-
-
-         }
-         break;
-         default:
-            /* we'll return default zero at this point */
-         break;
-      }
-      if( fp != nullptr )
-      {
-         fclose( fp );
-         fp = nullptr;
-      }
-   }
-   else if( SystemName <= trait && trait <= MachineName )
-   {
-      return( SystemInfo::getUTSNameInfo( trait ) );
-   }
-   else if( UpTime <= trait && trait <= MemoryUnit )
-   {
-      struct sysinfo info;
-      std::memset( &info,
-                   0,
-                   sizeof( struct sysinfo ) );
-      errno = 0;
-      if( sysinfo( &info ) != 0 )
-      {
-         perror( "Failed to get sysinfo!!" );
-      }
-      switch( trait )
-      {
-         case( UpTime ):
-         {
-            return( std::to_string( info.uptime ) );   
-         }
-         break;
-         case( OneMinLoad ):
-         {
-            return( std::to_string( info.loads[0] ) );
-         }
-         break;
-         case( FiveMinLoad ):
-         {
-            return( std::to_string( info.loads[1] ) );
-         }
-         break;
-         case( FifteenMinLoad ):
-         {
-            return( std::to_string( info.loads[2] ) );
-         }
-         break;
-         case( TotalMainMemory ):
-         {
-            return( std::to_string( info.totalram ) );
-         }
-         break;
-         case( FreeRam ):
-         {
-            return( std::to_string( info.freeram ) );
-         }
-         break;
-         case( SharedRam ):
-         {
-            return( std::to_string( info.sharedram ) );
-         }
-         break;
-         case( BufferRam ):
-         {
-            return( std::to_string( info.bufferram ) );
-         }
-         break;
-         case( TotalSwap ):
-         {
-            return( std::to_string( info.totalswap ) );
-         }
-         break;
-         case( FreeSwap ):
-         {
-            return( std::to_string( info.freeswap ) );
-         }
-         break;
-         case( NumberOfProcessesRunning ):
-         {
-            return( std::to_string( info.procs ) );
-         }
-         break;
-         case( TotalHighMemory ):
-         {
-            return( std::to_string( info.totalhigh ) );
-         }
-         break;
-         case( FreeHighMemory ):
-         {
-            return( std::to_string( info.freehigh ) );
-         }
-         break;
-         case( MemoryUnit ):
-         {
-            return( std::to_string( info.mem_unit ) );
-         }
-         break;
-         default:
-         break;
-      }
-   }
-   else if( trait == Scheduler )
-   {
-      const int schedule( sched_getscheduler( 0 /* self */ ) );
-      switch( schedule )
-      {
-         case( SCHED_OTHER ):
-         {
-            return( "SCHED_OTHER" );
-         }
-         break;
-         case( SCHED_BATCH ):
-         {
-            return( "SCHED_BATCH" );
-         }
-         break;
-         case( SCHED_IDLE ):
-         {
-            return( "SCHED_IDLE" );
-         }
-         break;
-         case( SCHED_FIFO ):
-         {
-            return( "SCHED_FIFO" );
-         }
-         break;
-         case( SCHED_RR ):
-         {
-            return( "SCHED_RR" );
-         }
-         break;
-         default:
-         break;
-      }
-   }
-   else if( trait == Priority )
-   {
-      errno = 0;
-      int priority( getpriority( PRIO_PROCESS, 0 /* self */ ) );
-      if( errno != 0 )
-      {
-         perror( "Failed to get process priority" );
-      }
-      return( std::to_string( priority ) );
-   }
-
-   else if (trait >= VirtualMemory && trait <= MaxStackSize) {
-   	return std::to_string(getrlimit_trait(trait));
-   }
-   
-   else if (trait >= MemTotal && trait <= MemFree) {
-	char buf[100];
-	const char *path = "/proc/meminfo";
-	memset(buf, 0, sizeof(buf));
-	
-	switch (trait){
-		case MemTotal:
-			if (parse_named_value(path, "MemTotal", buf) < 0)
-				perror("parsing");
-			break;
-		case MemFree:
-			if (parse_named_value(path, "MemFree", buf) < 0)
-				perror("parsing");
-			break;
-	}		
+	if (trait <= LevelFourCacheLineSize) {
+		int handle = cache_handle(trait);
+		long val(0);
 		
-	std::string tmp(buf);
-   	return tmp;
-   }
+		errno = 0;
+		
+		if ((val = sysconf(handle)) == -1)
+			perror("Failed to get config info");
+
+		return std::to_string(val);
+	}
+	else if (trait == NumberOfProcessors) {
+		return std::to_string(get_nprocs()); 
+	}
+	else if (ProcessorName <= trait && trait <= ProcessorFrequency) {
+   		char buf[128];
+		const char *path = "/proc/cpuinfo";
+	
+		memset(buf, 0, sizeof(buf));
+		
+		switch (trait) {
+			case ProcessorName: 
+				parse_named_value("/proc/cpuinfo", "model name", buf);
+				
+				return cstr_to_string(buf);
+			case ProcessorFrequency:
+				parse_named_value(path, "cpu MHz", buf);
+				
+				errno = 0;
+				uint64_t frequency(strtof(buf, (char**)NULL) * 1e6f);
+				if (errno) {
+					perror("Failed to convert frequency from /proc/cpuinfo");
+					exit(EXIT_FAILURE);
+				}
+				return std::to_string(frequency);
+		}
+	}
+	else if (SystemName <= trait && trait <= MachineName) {
+		return SystemInfo::getUTSNameInfo(trait);
+	}
+	else if (UpTime <= trait && trait <= MemoryUnit) {
+		struct sysinfo info;
+		
+		std::memset(&info, 0, sizeof(struct sysinfo));
+		errno = 0;
+		if (sysinfo(&info) != 0)
+			perror( "Failed to get sysinfo!!" );
+			
+		return SystemInfo::sysinfo_to_string(trait, info);
+	}
+	else if (trait == Scheduler) {
+		return schedule_str(sched_getscheduler(0));
+	}
+	else if( trait == Priority ) {
+		errno = 0;
+		int priority(getpriority(PRIO_PROCESS, 0 /* self */ ) );
+		if (errno != 0)
+			perror("Failed to get process priority");
+		return std::to_string(priority);
+	}
+	else if (trait >= VirtualMemory && trait <= MaxStackSize) {
+		return std::to_string(getrlimit_trait(trait));
+	} 
+	else if (trait >= MemTotal && trait <= Hugepagesize) {
+		char buf[100];
+		int pos = 0;
+		const char *path = "/proc/meminfo";
+	
+		memset(buf, 0, sizeof(buf));
+	
+		parse_named_value(path, getName(trait), buf);
+	
+		while (isspace(buf[pos]))
+			pos++;
+
+		std::string tmp(&buf[pos]);
+   		return tmp;
+	}
+	else if (trait >= Name && trait <= PPid) {
+		char *path = (char *)malloc(128);
+		int pid = 1;
+		char buf[100];
+		int pos = 0;
+		
+		sprintf(path, "/proc/%d/status", pid);
+	
+		memset(buf, 0, sizeof(buf));
+	
+		parse_named_value(path, getName(trait), buf);
+	
+		while (isspace(buf[pos]))
+			pos++;
+
+		std::string tmp(&buf[pos]);
+		free(path);
+   		return tmp;
+	}
    
 #elif __APPLE__
    typedef int mib_t;
@@ -717,7 +519,19 @@ SystemInfo::getSystemProperty( const Trait trait )
                       '\0',
                       sizeof( char ) * buff_size );
 
-         size_t len( sizeof( char ) * buff_size );
+         size_t len( sizeof( char ) *		char buf[100];
+		int pos = 0;
+		const char *path = "/proc/meminfo";
+	
+		memset(buf, 0, sizeof(buf));
+	
+		parse_named_value(path, getName(trait), buf);
+	
+		while (isspace(buf[pos]))
+			pos++;
+
+		std::string tmp(&buf[pos]);
+   		return tmp; buff_size );
          sysctlbyname( "machdep.cpu.brand_string", 
                  buff,
                  &len,
@@ -957,70 +771,6 @@ SystemInfo::getSystemProperty( const Trait trait )
    return( std::to_string( 0 ) );
 }
 
-std::string   
-SystemInfo::getName( const Trait trait )
-{
-   static const std::string traitStrings[ Trait::N ] = {
-      "LevelOneICacheSize",
-      "LevelOneICacheAssociativity",
-      "LevelOneICacheLineSize",
-      "LevelOneDCacheSize",
-      "LevelOneDCacheAssociativity",
-      "LevelOneDCacheLineSize",
-      "LevelTwoCacheSize",
-      "LevelTwoCacheAssociativity",
-      "LevelTwoCacheLineSize",
-      "LevelThreeCacheSize",
-      "LevelThreeCacheAssociativity",
-      "LevelThreeCacheLineSize",
-      "LevelFourCacheSize",
-      "LevelFourCacheAssociativity",
-      "LevelFourCacheLineSize",
-      "NumberOfProcessors",
-      "ProcessorName",
-      "ProcessorFrequency",
-      "SystemName",
-      "NodeName",
-      "OSRelease",
-      "OSVersion",
-      "MachineName",
-      "UpTime",
-      "OneMinLoad",
-      "FiveMinLoad",
-      "FifteenMinLoad",
-      "TotalMainMemory",
-      "FreeRam",
-      "SharedRam",
-      "BufferRam",
-      "TotalSwap",
-      "FreeSwap",
-      "NumberOfProcessesRunning",
-      "TotalHighMemory",
-      "FreeHighMemory",
-      "MemoryUnit",
-      "Scheduler",
-   "Priority",
-   "VirtualMemory",
-   "CoreFile",
-   "CPUTime",
-   "DataSegment",
-   "MaxFileSize",
-   "LockLimit",
-   "MaxMemLock",
-   "MsgQueueLimit",
-   "MaxNice",
-   "MaxFD",
-   "MaxNumProcesses",
-   "MaxRAMPages",
-   "MaxPriority",
-   "MaxRTime",
-   "MaxSignalQueue",
-   "MaxStackSize",
-   "MemTotal",
-   "MemFree"
-   };
-   return( traitStrings[ trait ] );
-}
 
 size_t
 SystemInfo::getNumTraits()
