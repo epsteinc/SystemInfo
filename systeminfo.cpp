@@ -26,7 +26,9 @@
 
 #if __linux
 #include <unistd.h>
+#include <fcntl.h>
 #include <sys/sysinfo.h>
+#include <sys/ioctl.h>
 #ifndef __USE_GNU
 #define __USE_GNU 1
 #endif
@@ -204,6 +206,151 @@ std::string SystemInfo::sysinfo_to_string (const Trait trait, struct sysinfo inf
 	}
 }
 
+std::string cstr_to_string (const char *cstr)
+{
+	std::string tmp(cstr);
+	return tmp;
+}
+
+
+std::string proc_stat_val (struct ProcStatData data, const Trait trait)
+{
+	switch (trait) {
+   		case pid1:
+   			return std::to_string(data.pid);
+		case executable:
+			return cstr_to_string(data.executable);
+		case state:
+			return std::to_string(data.state);
+		case parent_pid: 
+			return std::to_string(data.parent_pid);
+		case group_id:
+			return std::to_string(data.group_id);
+		case session_id:
+			return std::to_string(data.session_id);
+		case tty_nr:
+			return std::to_string(data.tty_nr);
+		case foreground_id:
+			return std::to_string(data.foreground_id);
+		case flags:
+			return std::to_string(data.flags);
+		case minor_faults:
+			return std::to_string(data.minor_faults);
+		case child_minor_faults:
+			return std::to_string(data.child_minor_faults);
+		case major_faults:
+			return std::to_string(data.major_faults);
+		case child_major_faults:
+			return std::to_string(data.child_major_faults);
+		case uptime:
+			return std::to_string(data.uptime);
+		case scheduled_time:
+			return std::to_string(data.scheduled_time);
+		case child_uptime:
+			return std::to_string(data.child_uptime);
+		case child_scheduled_time:
+			return std::to_string(data.child_scheduled_time);
+		case priority1:
+			return std::to_string(data.priority);
+		case nice1:
+			return std::to_string(data.nice);
+		case number_threads:
+			return std::to_string(data.number_threads);
+		case itrealvalue:
+			return std::to_string(data.itrealvalue);
+		case start_time:
+			return std::to_string(data.start_time);
+		case virtual_mem_size_bytes:
+			return std::to_string(data.virtual_mem_size_bytes);
+		case resident_mem_size:
+			return std::to_string(data.resident_mem_size);
+		case resident_mem_soft_limit:
+			return std::to_string(data.resident_mem_soft_limit);
+		case startcode:
+			return std::to_string(data.startcode);
+		case endcode:
+			return std::to_string(data.endcode);
+		case startstack:
+			return std::to_string(data.startstack);
+		case curr_esp:
+			return std::to_string(data.curr_esp);
+		case curr_eip:
+			return std::to_string(data.curr_eip);
+		case signal_unused:
+			return std::to_string(data.signal_unused);
+		case signal_ignore_unused:
+			return std::to_string(data.signal_ignore_unused);
+		case signal_caught_unused:
+			return std::to_string(data.signal_caught_unused);
+		case channel:
+			return std::to_string(data.channel);
+		case pages_swapped:
+			return std::to_string(data.pages_swapped);
+		case cumulative_child_swapped_pages:
+			return std::to_string(data.cumulative_child_swapped_pages);
+		case exit_signal:
+			return std::to_string(data.exit_signal);
+		case processor_last_executed_on:
+			return std::to_string(data.processor_last_executed_on);
+		case rt_schedule:
+			return std::to_string(data.rt_schedule);
+		case policy:
+			return std::to_string(data.policy);
+		case delayed_io_ticks:
+			return std::to_string(data.delayed_io_ticks);
+		case guest_time:
+			return std::to_string(data.guest_time);
+		case child_guest_time:
+			return std::to_string(data.child_guest_time);
+	}
+}
+
+int proc_stat_init (struct ProcStatData *data, int pid)
+{
+	int fd;
+	char *path_buf, *stat_buf;
+	const size_t path_buf_size = 100, stat_buf_size = 1024;
+	
+	if (!data)
+		return -1;
+	
+	path_buf = (char *)calloc(sizeof(char), path_buf_size);
+	stat_buf = (char *)calloc(sizeof(char), stat_buf_size + 1);
+	
+	memset(data, 0, sizeof(struct ProcStatData));
+	
+	snprintf(path_buf, path_buf_size, "/proc/%d/stat", pid);
+	fd = open(path_buf, O_RDONLY);
+
+	if (!fd || read(fd, stat_buf, stat_buf_size) <= 0)
+		return -1;
+	
+	sscanf(stat_buf, "%d %s %c %d %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu "
+		   "%lu %lu %lu %lu %lu %llu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu "
+		   "%lu %lu %lu %lu %d %d %u %u %llu %lu %lu", 
+		&data->pid, data->executable, &data->state, &data->parent_pid, 
+		&data->group_id, &data->session_id, &data->tty_nr, &data->foreground_id,
+		&data->flags, &data->minor_faults, &data->child_minor_faults, 
+		&data->major_faults, &data->child_major_faults, &data->uptime, 
+		&data->scheduled_time, &data->child_uptime, &data->child_scheduled_time, 
+		&data->priority, &data->nice, &data->number_threads, &data->itrealvalue, 
+		&data->start_time, &data->virtual_mem_size_bytes, &data->resident_mem_size, 
+		&data->resident_mem_soft_limit, &data->startcode, &data->endcode, 
+		&data->startstack, &data->curr_esp, &data->curr_eip, &data->signal_unused, 
+		&data->signal_ignore_unused, &data->signal_caught_unused, 
+		&data->channel, &data->pages_swapped, &data->cumulative_child_swapped_pages,
+		&data->exit_signal, &data->processor_last_executed_on, &data->rt_schedule, 
+		&data->policy, &data->delayed_io_ticks, &data->guest_time, 
+		&data->child_guest_time);
+   
+	close(fd);
+	
+	free(path_buf);
+	free(stat_buf);
+	
+	return 0;
+}
+
 int parse_named_value (const char *path, const char *name, char *buf)
 {
 	FILE *fp = NULL;
@@ -238,15 +385,10 @@ int parse_named_value (const char *path, const char *name, char *buf)
 	return -1;
 }
 
-std::string cstr_to_string (const char *cstr)
-{
-	std::string tmp(cstr);
-	return tmp;
-}
-
 std::string
-SystemInfo::getSystemProperty (const Trait trait)
+SystemInfo::getSystemProperty (const Trait trait, int pid)
 {
+	static struct ProcStatData data;
 #if __linux
 	if (trait <= LevelFourCacheLineSize) {
 		int handle = cache_handle(trait);
@@ -326,9 +468,8 @@ SystemInfo::getSystemProperty (const Trait trait)
 		std::string tmp(&buf[pos]);
    		return tmp;
 	}
-	else if (trait >= Name && trait <= PPid) {
+	else if (trait >= voluntary_ctxt_switches && trait <= nonvoluntary_ctxt_switches) {
 		char *path = (char *)malloc(128);
-		int pid = 1;
 		char buf[100];
 		int pos = 0;
 		
@@ -343,7 +484,18 @@ SystemInfo::getSystemProperty (const Trait trait)
 
 		std::string tmp(&buf[pos]);
 		free(path);
+		
+		if (trait == nonvoluntary_ctxt_switches) {
+			if (proc_stat_init(&data, pid) < 0) {
+				perror("/proc/stat init");
+				exit(-1);
+			}
+		}
+		
    		return tmp;
+	}
+	else if (trait >= pid1 && trait <= child_guest_time) {
+		return proc_stat_val(data, trait);
 	}
    
 #elif __APPLE__
